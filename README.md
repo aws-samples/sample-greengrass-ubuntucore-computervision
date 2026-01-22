@@ -18,14 +18,14 @@ The demo also includes a React web application that displays the computer vision
 Create an IAM user with access key and secret access key for Greengrass installation. The minimum required permissions are:
 
 - `iot:CreateThing`, `iot:CreateThingType`, `iot:CreateThingGroup`
-- `iot:CreatePolicy`, `iot:AttachPolicy`, `iot:AttachThingPrincipal`
-- `iot:CreateKeysAndCertificate`, `iot:DescribeEndpoint`, `iot:GetPolicy`
-- `iot:DescribeRoleAlias`, `iot:AttachPrincipalPolicy`
-- `greengrass:AssociateServiceRoleToAccount`
-- `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole`
-- `logs:CreateLogGroup`, `logs:DescribeLogGroups`
+`iot:CreatePolicy`, `iot:AttachPolicy`, `iot:AttachThingPrincipal`,
+`iot:CreateKeysAndCertificate`, `iot:DescribeEndpoint`, `iot:GetPolicy`,
+`iot:DescribeRoleAlias`, `iot:AttachPrincipalPolicy`,
+`greengrass:AssociateServiceRoleToAccount`,
+`iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole`,
+`logs:CreateLogGroup`, `logs:DescribeLogGroups`
 
-**Recommended**: It is recommended to use an IAM user with `AWSGreengrassFullAccess` and `AWSIoTFullAccess` policies.
+**Note**: For simplicity you can use an IAM user with `AWSGreengrassFullAccess` and `AWSIoTFullAccess` policies.
 
 **Important**: Create and download the access keys for this IAM user as you will be prompted to enter them during Greengrass installation.
 
@@ -34,34 +34,34 @@ Create an IAM user with access key and secret access key for Greengrass installa
 Create a separate IAM user (or use the same one) with access key and secret access key for deploying components and setting up AWS resources. The minimum required permissions are:
 
 **S3 Permissions:**
-- `s3:CreateBucket`, `s3:PutObject`, `s3:GetObject`
-- `s3:ListBucket`, `s3:PutBucketCORS`
+- `s3:CreateBucket`, `s3:PutObject`, `s3:GetObject`,
+`s3:ListBucket`, `s3:PutBucketCORS`
 
 **Greengrass Permissions:**
-- `greengrass:CreateComponentVersion`, `greengrass:DeleteComponent`
-- `greengrass:CreateDeployment`, `greengrass:CancelDeployment`, `greengrass:ListDeployments`
-- `greengrass:GetComponent`, `greengrass:ListComponents`
-- `greengrass:GetDeployment`, `greengrass:GetCoreDevice`, `greengrass:ListCoreDevices`,
-- `greengrass:ResolveComponentCandidates`
+- `greengrass:CreateComponentVersion`, `greengrass:DeleteComponent`,
+`greengrass:CreateDeployment`, `greengrass:CancelDeployment`, `greengrass:ListDeployments`,
+`greengrass:GetComponent`, `greengrass:ListComponents`,
+`greengrass:GetDeployment`, `greengrass:GetCoreDevice`, `greengrass:ListCoreDevices`,
+`greengrass:ResolveComponentCandidates`
 
 **IoT Permissions:**
-- `iot:CreateRoleAlias`, `iot:DescribeRoleAlias`
-- `iot:CreatePolicy`, `iot:GetPolicy`
-- `iot:DescribeEndpoint`, `iot:DescribeThing`
-- `iot:DescribeThing`, `iot:GetThingShadow`, `iot:UpdateThingShadow`,
-- `iot:ListThingPrincipals`, `iot:GetPolicyVersion`
+- `iot:CreateRoleAlias`, `iot:DescribeRoleAlias`,
+`iot:CreatePolicy`, `iot:GetPolicy`,
+`iot:DescribeEndpoint`, `iot:DescribeThing`,
+`iot:DescribeThing`, `iot:GetThingShadow`, `iot:UpdateThingShadow`,
+`iot:ListThingPrincipals`, `iot:GetPolicyVersion`
 
 **Cognito Permissions:**
-- `cognito-idp:CreateUserPool`, `cognito-idp:ListUserPools`
-- `cognito-idp:CreateUserPoolClient`
-- `cognito-idp:AdminCreateUser`, `cognito-idp:AdminSetUserPassword`
-- `cognito-identity:CreateIdentityPool`, `cognito-identity:ListIdentityPools`
-- `cognito-identity:SetIdentityPoolRoles`
+- `cognito-idp:CreateUserPool`, `cognito-idp:ListUserPools`,
+`cognito-idp:CreateUserPoolClient`,
+`cognito-idp:AdminCreateUser`, `cognito-idp:AdminSetUserPassword`,
+`cognito-identity:CreateIdentityPool`, `cognito-identity:ListIdentityPools`,
+`cognito-identity:SetIdentityPoolRoles`
 
 **IAM Permissions:**
-- `iam:CreateRole`, `iam:GetRole`
-- `iam:PutRolePolicy`, `iam:AttachRolePolicy`
-- `iam:PassRole`
+- `iam:CreateRole`, `iam:GetRole`,
+`iam:PutRolePolicy`, `iam:AttachRolePolicy`,
+`iam:PassRole`
 
 **STS Permissions:**
 - `sts:GetCallerIdentity`
@@ -283,7 +283,7 @@ The React dashboard is located in the `react-web/` directory. After running the 
 
 ### Dashboard CORS Configuration
 
-The S3 bucket must have CORS configured to allow the web dashboard to access images. The setup script automatically configures CORS when creating the bucket. If you experience CORS errors:
+The S3 bucket must have CORS configured to allow the web dashboard to access images. The setup script automatically configures CORS when creating the bucket. However, if you experience CORS errors:
 
 1. Run the setup script to configure CORS:
    ```bash
