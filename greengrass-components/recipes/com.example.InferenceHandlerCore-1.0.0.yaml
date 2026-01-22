@@ -1,0 +1,56 @@
+---
+RecipeFormatVersion: '2020-01-25'
+ComponentName: com.example.InferenceHandlerCore
+ComponentVersion: '1.0.0'
+ComponentDescription: 'A component that processes inference for captured images'
+ComponentPublisher: AWS
+ComponentDependencies:
+  aws.greengrass.TokenExchangeService:
+    VersionRequirement: '^2.0.0'
+ComponentConfiguration:
+  DefaultConfiguration:
+    # Model server configuration
+    ModelServerUrl: "localhost:9000"  # gRPC port for OpenVINO Model Server
+    ModelName: "faster_rcnn"  # Should match the model name from deployment
+    
+    # Topic configuration
+    SubTopic: "camera/images"
+    PubTopic: "camera/inference"
+    
+    # S3 configuration
+    S3BucketName: ""  # S3 bucket for storing processed images
+    
+    accessControl:
+      aws.greengrass.ipc.pubsub:
+        com.example.InferenceHandlerCore:pubsub:1:
+          policyDescription: 'Allows subscription to capture events'
+          operations:
+            - 'aws.greengrass#SubscribeToTopic'
+          resources:
+            - 'camera/images'
+      aws.greengrass.ipc.mqttproxy:
+        com.example.InferenceHandlerCore:mqttproxy:2:
+          policyDescription: 'Allows publication of inference results'
+          operations:
+            - 'aws.greengrass#PublishToIoTCore'
+          resources:
+            - 'camera/inference'
+Manifests:
+- Platform:
+    os: all
+    runtime: '*'
+  Lifecycle:
+    Run:
+      Script: |
+        export SUB_TOPIC="{configuration:/SubTopic}"
+        export PUB_TOPIC="{configuration:/PubTopic}"
+        export MODEL_SERVER_URL="{configuration:/ModelServerUrl}"
+        export MODEL_NAME="{configuration:/ModelName}"
+        export S3_BUCKET_NAME="{configuration:/S3BucketName}"
+        export ARTIFACT_PATH={artifacts:path}
+        python3 {artifacts:path}/inference_handler_core.py
+  Artifacts:
+    - Uri: inference_handler_core.py
+      Unarchive: NONE
+    - Uri: label_map.txt
+      Unarchive: NONE

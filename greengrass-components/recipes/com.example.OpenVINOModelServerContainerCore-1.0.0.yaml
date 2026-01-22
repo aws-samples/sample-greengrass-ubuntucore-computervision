@@ -1,0 +1,21 @@
+RecipeFormatVersion: '2020-01-25'
+ComponentName: com.example.OpenVINOModelServerContainerCore
+ComponentVersion: '1.0.0'
+ComponentDescription: 'OpenVINO Model Server Docker Container'
+ComponentPublisher: AWS
+ComponentConfiguration:
+  DefaultConfiguration:
+    "model_name": "faster_rcnn"
+    "model_path": "/model"
+    "port": "9000"
+Manifests:
+  - Platform:
+      os: linux
+      runtime: '*'
+    Lifecycle:
+      run:
+        requiresPrivilege: true
+        Script: "docker run -u 0 -d -v {artifacts:decompressedPath}/object_detection_model/model:/model -p {configuration:/port}:{configuration:/port} openvino/model_server:latest --model_name {configuration:/model_name} --model_path {configuration:/model_path} --port {configuration:/port}"
+    Artifacts:
+      - Uri: object_detection_model.zip
+        Unarchive: ZIP

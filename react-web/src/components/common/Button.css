@@ -1,0 +1,195 @@
+/**
+ * Modern Button Component Styles
+ * Uses design tokens and GPU-accelerated animations
+ */
+
+/* Base Button Styles */
+.aws-button {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Typography */
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  text-align: center;
+  
+  /* Spacing - using design tokens */
+  padding: var(--spacing-md) var(--spacing-xl);
+  
+  /* Borders */
+  border: none;
+  border-radius: var(--border-radius-md);
+  
+  /* Appearance */
+  cursor: pointer;
+  user-select: none;
+  
+  /* GPU-accelerated transitions - only transform and opacity */
+  transition: transform var(--transition-fast),
+              opacity var(--transition-fast),
+              box-shadow var(--transition-fast);
+  
+  /* Prevent layout shift */
+  will-change: transform;
+}
+
+/* Primary Button Variant */
+.aws-button--primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.aws-button--primary:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  box-shadow: var(--shadow-md);
+  /* GPU-accelerated transform */
+  transform: translateY(-1px);
+}
+
+.aws-button--primary:active:not(:disabled) {
+  /* Pressed state - GPU-accelerated */
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs);
+}
+
+.aws-button--primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.3);
+}
+
+/* Secondary Button Variant */
+.aws-button--secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.aws-button--secondary:hover:not(:disabled) {
+  background-color: var(--color-background);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  /* GPU-accelerated transform */
+  transform: translateY(-1px);
+}
+
+.aws-button--secondary:active:not(:disabled) {
+  /* Pressed state - GPU-accelerated */
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.aws-button--secondary:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.2);
+}
+
+/* Disabled State */
+.aws-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  /* Prevent hover effects */
+  pointer-events: none;
+}
+
+/* Loading State */
+.aws-button--loading {
+  position: relative;
+  color: transparent;
+}
+
+.aws-button--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid currentColor;
+  border-radius: var(--border-radius-full);
+  border-top-color: transparent;
+  animation: button-spin 0.6s linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus Ring - Accessible Focus Indicator */
+.aws-button:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* High contrast focus for accessibility */
+@media (prefers-contrast: high) {
+  .aws-button:focus-visible {
+    outline-width: 4px;
+    outline-offset: 3px;
+  }
+}
+
+/* Size Variants - using design tokens */
+.aws-button--sm {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
+.aws-button--md {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: var(--font-size-base);
+  min-height: 40px;
+}
+
+.aws-button--lg {
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  font-size: var(--font-size-lg);
+  min-height: 48px;
+}
+
+/* Responsive Touch Targets - minimum 44x44px for mobile */
+@media (max-width: 768px) {
+  .aws-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+  
+  .aws-button--sm {
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+  
+  .aws-button--md {
+    min-height: 44px;
+  }
+  
+  .aws-button--lg {
+    min-height: 48px;
+  }
+}
+
+/* Mobile breakpoint (max-width: 640px) */
+@media (max-width: 640px) {
+  .aws-button {
+    font-size: 1rem; /* Prevent zoom on iOS */
+  }
+  
+  .aws-button--sm {
+    font-size: 0.875rem;
+  }
+  
+  .aws-button--lg {
+    font-size: 1.125rem;
+  }
+}

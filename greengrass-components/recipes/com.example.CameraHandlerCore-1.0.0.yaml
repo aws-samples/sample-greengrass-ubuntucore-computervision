@@ -1,0 +1,34 @@
+---
+RecipeFormatVersion: '2020-01-25'
+ComponentName: com.example.CameraHandlerCore
+ComponentVersion: '1.0.0'
+ComponentDescription: 'A component that captures images from a USB webcam and publishes events to a local MQTT topic for inference'
+ComponentPublisher: AWS
+ComponentConfiguration:
+  DefaultConfiguration:
+    accessControl:
+      aws.greengrass.ipc.pubsub:
+        com.example.CameraHandler:pubsub:1:
+          policyDescription: 'Allows publication of capture events'
+          operations:
+            - 'aws.greengrass#PublishToTopic'
+          resources:
+            - 'camera/images'
+Manifests:
+- Platform:
+    os: all
+    runtime: '*'
+  Lifecycle:
+    Run:
+      Script: |
+        export CAMERA_INDEX="/dev/video0"
+        export CAPTURE_INTERVAL="30"
+        export IMAGE_WIDTH="640"
+        export IMAGE_HEIGHT="480"
+        export TOPIC="camera/images"
+        python3 {artifacts:path}/camera_handler_core.py
+  Artifacts:
+    - Uri: camera_handler_core.py
+      Unarchive: NONE
+    - Uri: requirements.txt
+      Unarchive: NONE
