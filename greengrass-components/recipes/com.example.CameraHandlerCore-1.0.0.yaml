@@ -19,16 +19,28 @@ Manifests:
     os: all
     runtime: '*'
   Lifecycle:
+    Install:
+      Script: |
+        /bin/bash -c 'set -e && \
+        python3 -m venv --without-pip venv/ && \
+        source venv/bin/activate && \
+        python3 {artifacts:path}/get-pip.py && \
+        python3 -m pip install -r {artifacts:path}/requirements.txt && \
+        deactivate'
     Run:
       Script: |
+        /bin/bash -c 'set -e && \
+        source venv/bin/activate && \
         export CAMERA_INDEX="/dev/video0"
         export CAPTURE_INTERVAL="30"
         export IMAGE_WIDTH="640"
         export IMAGE_HEIGHT="480"
         export TOPIC="camera/images"
-        python3 {artifacts:path}/camera_handler_core.py
+        python3 {artifacts:path}/camera_handler_core.py'
   Artifacts:
     - Uri: camera_handler_core.py
+      Unarchive: NONE
+    - Uri: get-pip.py
       Unarchive: NONE
     - Uri: requirements.txt
       Unarchive: NONE

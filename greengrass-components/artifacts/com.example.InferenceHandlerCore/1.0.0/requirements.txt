@@ -1,1 +1,3 @@
+ovmsclient
+numpy
 opencv-python-headless
