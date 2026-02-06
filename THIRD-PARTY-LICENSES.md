@@ -13,6 +13,7 @@ This project uses the following third-party software components:
 - **awsiotsdk** - Apache License 2.0 - https://github.com/aws/aws-iot-device-sdk-python-v2
 - **numpy** - BSD 3-Clause License - https://github.com/numpy/numpy
 - **ovmsclient** - Apache License 2.0 - https://github.com/openvinotoolkit/model_server
+- **get-pip** - MIT License - https://github.com/pypa/get-pip
 
 ## JavaScript/TypeScript Dependencies (React Dashboard)
 
