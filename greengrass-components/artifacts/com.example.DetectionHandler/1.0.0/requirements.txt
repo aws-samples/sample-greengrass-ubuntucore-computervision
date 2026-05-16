@@ -1,4 +1,0 @@
-awsiotsdk==1.21.0
-ovmsclient
-numpy
-opencv-python-headless

@@ -1,2 +1,0 @@
-environment:
-  - MODEL_FASTER_RCNN_PATH=$COMPONENT
