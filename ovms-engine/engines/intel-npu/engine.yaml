@@ -1,0 +1,22 @@
+name: intel-npu
+description: OpenVINO Model Server optimised for Intel NPU inference
+vendor: Intel
+grade: stable
+
+devices:
+  allof:
+    - type: cpu
+      manufacturer-id: GenuineIntel
+      architecture: amd64
+    - type: npu
+      bus: pci
+      vendor-id: "0x8086"
+
+memory: 4G
+disk-space: 2G
+
+components:
+  - ovms-npu
+
+configurations:
+  target_device: NPU

@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
     "capture_interval": 10,  # seconds
     "image_width": 640,
     "image_height": 480,
-    "output_directory": os.environ.get('SNAP_USER_DATA'),
+    "output_directory": os.environ.get('SNAP_USER_DATA', '/tmp/camera'),
     "topic": "camera/images",
     "qos": 1
 }

@@ -19,6 +19,8 @@ from awsiot.greengrasscoreipc.model import (
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+SHADOW_NAME = 'inference-config'
+
 # Default configuration
 DEFAULT_CONFIG = {
     "sub_topic": "camera/images",
@@ -30,6 +32,7 @@ DEFAULT_CONFIG = {
     "model_output_name": "detection_boxes,detection_classes,detection_scores,num_detections",
     "labels_file": "label_map.txt",
     "detections_limit": 10,
+    "confidence_threshold": 0.5,
     "s3_bucket_name": "",
     "output_directory": os.environ.get('SNAP_USER_DATA', '/tmp'),
 }
@@ -49,10 +52,11 @@ class InferenceHandler():
         """Initialize the inference handler with configuration."""
         self.config = DEFAULT_CONFIG.copy()
         self.load_config()
-        
+        self.thing_name = os.environ.get('AWS_IOT_THING_NAME', '')
+
         # Initialize IPC client
         self.ipc_client = clientv2.GreengrassCoreIPCClientV2()
-        
+
         logger.info("Inference handler initialized with config: %s", self.config)
 
         # load and enumerate labels
@@ -60,6 +64,9 @@ class InferenceHandler():
         with open(os.path.join(artifact_path,self.config['labels_file']), "r", encoding='utf-8') as file:
             labels = file.read().strip().split("\n")
             self.labels_map = dict(enumerate(labels, 1))
+
+        # Load confidence threshold from shadow (overrides env var default if shadow exists)
+        self.load_shadow_config()
 
     def load_config(self):
         """Load configuration from environment variables."""
@@ -73,15 +80,116 @@ class InferenceHandler():
             self.config["model_name"] = os.environ.get("MODEL_NAME")
         if os.environ.get("S3_BUCKET_NAME"):
             self.config["s3_bucket_name"] = os.environ.get("S3_BUCKET_NAME")
+        if os.environ.get("CONFIDENCE_THRESHOLD"):
+            try:
+                self.config["confidence_threshold"] = float(os.environ.get("CONFIDENCE_THRESHOLD"))
+            except ValueError:
+                logger.warning("Invalid CONFIDENCE_THRESHOLD value, using default: %s", self.config["confidence_threshold"])
+
+    def load_shadow_config(self):
+        """Read the inference-config named shadow on startup to restore the last-set threshold."""
+        if not self.thing_name:
+            logger.warning("AWS_IOT_THING_NAME not set, skipping shadow read")
+            return
+        try:
+            response = self.ipc_client.get_thing_shadow(
+                thing_name=self.thing_name,
+                shadow_name=SHADOW_NAME
+            )
+            shadow = json.loads(response.payload)
+            reported = shadow.get('state', {}).get('reported', {})
+            if 'confidence_threshold' in reported:
+                self.config['confidence_threshold'] = float(reported['confidence_threshold'])
+                logger.info("Restored confidence_threshold from shadow: %s", self.config['confidence_threshold'])
+        except Exception as e:
+            # Shadow may not exist yet on first run — that is expected
+            logger.info("No existing shadow found, using default confidence_threshold: %s (%s)", self.config['confidence_threshold'], e)
+
+    def update_shadow_reported(self):
+        """Update the shadow reported state with the current confidence threshold."""
+        if not self.thing_name:
+            return
+        try:
+            payload = json.dumps({
+                "state": {
+                    "reported": {
+                        "confidence_threshold": self.config['confidence_threshold']
+                    }
+                }
+            }).encode('utf-8')
+            self.ipc_client.update_thing_shadow(
+                thing_name=self.thing_name,
+                shadow_name=SHADOW_NAME,
+                payload=payload
+            )
+            logger.info("Shadow reported state updated: confidence_threshold=%s", self.config['confidence_threshold'])
+        except Exception as e:
+            logger.error("Failed to update shadow reported state: %s", e)
+
+    def on_shadow_delta(self, event) -> None:
+        """Handle shadow delta updates to apply a new confidence threshold at runtime."""
+        try:
+            # IoT Core MQTT events deliver payload as bytes in event.message.payload
+            payload = event.message.payload
+            delta = json.loads(payload)
+            logger.info("Shadow delta received: %s", delta)
+
+            # AWS IoT Core wraps delta values under 'state' key
+            state = delta.get('state', {})
+            new_value = state.get('confidence_threshold')
+
+            # Fallback: handle case where value might be at top level (robustness)
+            if new_value is None:
+                new_value = delta.get('confidence_threshold')
+
+            if new_value is None:
+                logger.debug("Shadow delta does not contain confidence_threshold, ignoring")
+                return
+
+            # Validate threshold range
+            new_threshold = float(new_value)
+            if not (0.0 <= new_threshold <= 1.0):
+                logger.warning(
+                    "Received confidence_threshold out of range [0.0, 1.0]: %s, ignoring",
+                    new_threshold
+                )
+                return
+
+            self.config['confidence_threshold'] = new_threshold
+            logger.info("Confidence threshold updated to: %s", new_threshold)
+            self.update_shadow_reported()
+        except (ValueError, TypeError) as e:
+            logger.warning("Invalid confidence_threshold value in shadow delta: %s", e)
+        except Exception:
+            traceback.print_exc()
 
     def run(self):
         """Main loop to subscribe to MQTT topic and publish inference results."""
         logger.info("Starting inference handler loop")
         try:
-            # Subscription operations return a tuple with the response and the operation.
-            _, operation = self.ipc_client.subscribe_to_topic(topic=self.config['sub_topic'], on_stream_event=self.on_stream_event,
-                                                        on_stream_error=self.on_stream_error, on_stream_closed=self.on_stream_closed)
+            # Subscribe to camera image events
+            _, operation = self.ipc_client.subscribe_to_topic(
+                topic=self.config['sub_topic'],
+                on_stream_event=self.on_stream_event,
+                on_stream_error=self.on_stream_error,
+                on_stream_closed=self.on_stream_closed
+            )
             logger.info('Successfully subscribed to topic: ' + self.config['sub_topic'])
+
+            # Subscribe to shadow delta updates for runtime config changes (cloud MQTT)
+            if self.thing_name:
+                delta_topic = f"$aws/things/{self.thing_name}/shadow/name/{SHADOW_NAME}/update/delta"
+                self.ipc_client.subscribe_to_iot_core(
+                    topic_name=delta_topic,
+                    qos='1',
+                    on_stream_event=self.on_shadow_delta,
+                    on_stream_error=self.on_stream_error,
+                    on_stream_closed=self.on_stream_closed
+                )
+                logger.info("Subscribed to shadow delta topic: %s", delta_topic)
+                # Publish current reported state so the shadow is in sync from the start
+                self.update_shadow_reported()
+
             while True:
                 pass
         except KeyboardInterrupt:
@@ -158,9 +266,14 @@ class InferenceHandler():
 
         image_with_detection_boxes = np.copy(image)
 
+        threshold = self.config['confidence_threshold']
+        logger.info("Applying confidence threshold: %s", threshold)
+
         for i in range(self.config['detections_limit']):
-            detected_class_name = self.labels_map[int(detection_classes[0, i])]
             score = detection_scores[0, i]
+            if score < threshold:
+                continue
+            detected_class_name = self.labels_map[int(detection_classes[0, i])]
             label = f"{detected_class_name} {score:.2f}"
             self.add_detection_box(
                 box=normalized_detection_boxes[0, i],

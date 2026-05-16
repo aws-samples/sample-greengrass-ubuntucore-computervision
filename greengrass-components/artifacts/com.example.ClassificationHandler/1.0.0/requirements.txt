@@ -1,0 +1,4 @@
+awsiotsdk
+ovmsclient
+numpy
+opencv-python-headless

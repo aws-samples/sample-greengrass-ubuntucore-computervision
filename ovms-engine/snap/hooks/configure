@@ -1,0 +1,30 @@
+#!/bin/bash -eu
+# ovms-engine snap configure hook
+# Handles runtime configuration changes via snapctl/modelctl.
+
+# Handle engine override
+ENGINE=$(snapctl get engine)
+if [ -n "$ENGINE" ]; then
+    case "$ENGINE" in
+        auto)
+            modelctl use-engine --auto --assume-yes
+            snapctl restart ovms-engine.server
+            ;;
+        *)
+            modelctl use-engine "$ENGINE" --assume-yes
+            snapctl restart ovms-engine.server
+            ;;
+    esac
+fi
+
+# Handle gRPC port override
+PORT=$(snapctl get grpc-port)
+if [ -n "$PORT" ]; then
+    if [ "$PORT" -ge 1024 ] && [ "$PORT" -le 65535 ] 2>/dev/null; then
+        modelctl set --package grpc.port="$PORT"
+        snapctl restart ovms-engine.server
+    else
+        echo "Invalid port: $PORT. Must be between 1024 and 65535" >&2
+        exit 1
+    fi
+fi

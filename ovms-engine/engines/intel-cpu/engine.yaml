@@ -1,0 +1,19 @@
+name: intel-cpu
+description: OpenVINO Model Server optimised for Intel CPU inference
+vendor: Intel
+grade: stable
+
+devices:
+  anyof:
+    - type: cpu
+      manufacturer-id: GenuineIntel
+      architecture: amd64
+
+memory: 2G
+disk-space: 1G
+
+components:
+  - ovms-cpu
+
+configurations:
+  target_device: CPU

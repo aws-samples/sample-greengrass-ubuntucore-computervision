@@ -1,0 +1,11 @@
+{
+    "model_id": "efficientnet",
+    "model_name": "efficientnet",
+    "version": "1.0.0",
+    "input_name": "input",
+    "output_names": [
+        "predictions"
+    ],
+    "input_shape": [1, 224, 224, 3],
+    "labels_file": "labels.txt"
+}

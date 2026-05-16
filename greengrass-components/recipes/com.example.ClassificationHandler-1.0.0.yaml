@@ -1,0 +1,76 @@
+---
+RecipeFormatVersion: '2020-01-25'
+ComponentName: com.example.ClassificationHandler
+ComponentVersion: '1.0.0'
+ComponentDescription: 'Image classification handler that reads model configuration from the device shadow and calls OVMS for top-N class predictions'
+ComponentPublisher: AWS
+ComponentDependencies:
+  aws.greengrass.ShadowManager:
+    VersionRequirement: '^2.0.0'
+  aws.greengrass.TokenExchangeService:
+    VersionRequirement: '^2.0.0'
+  com.example.ModelManagerCore:
+    VersionRequirement: '^1.0.0'
+    DependencyType: SOFT
+ComponentConfiguration:
+  DefaultConfiguration:
+    # Which model_id to look up in the model-config shadow
+    classification_model_id: "efficientnet"
+
+    # OVMS gRPC endpoint
+    OvmsGrpcUrl: "localhost:9000"
+
+    # Number of top classifications to return
+    TopN: "5"
+
+    accessControl:
+      aws.greengrass.ShadowManager:
+        com.example.ClassificationHandler:shadow:1:
+          policyDescription: 'Allows read access to the model-config named shadow for model metadata'
+          operations:
+            - 'aws.greengrass#GetThingShadow'
+          resources:
+            - '$aws/things/*/shadow/name/model-config'
+      aws.greengrass.ipc.pubsub:
+        com.example.ClassificationHandler:pubsub:1:
+          policyDescription: 'Allows subscription to camera image capture events'
+          operations:
+            - 'aws.greengrass#SubscribeToTopic'
+          resources:
+            - 'camera/images'
+      aws.greengrass.ipc.mqttproxy:
+        com.example.ClassificationHandler:mqttproxy:1:
+          policyDescription: 'Allows publication of classification results to IoT Core'
+          operations:
+            - 'aws.greengrass#PublishToIoTCore'
+          resources:
+            - 'camera/classifications'
+Manifests:
+- Platform:
+    os: all
+    runtime: '*'
+  Lifecycle:
+    Install:
+      Script: |
+        /bin/bash -c 'set -e && \
+        python3 -m venv --without-pip venv/ && \
+        source venv/bin/activate && \
+        python3 {artifacts:path}/get-pip.py && \
+        python3 -m pip install -r {artifacts:path}/requirements.txt && \
+        deactivate'
+    Run:
+      Script: |
+        /bin/bash -c 'set -e && \
+        source venv/bin/activate && \
+        export AWS_IOT_THING_NAME="{iot:thingName}" && \
+        export CLASSIFICATION_MODEL_ID="{configuration:/classification_model_id}" && \
+        export OVMS_GRPC_URL="{configuration:/OvmsGrpcUrl}" && \
+        export TOP_N="{configuration:/TopN}" && \
+        python3 {artifacts:path}/classification_handler.py'
+  Artifacts:
+    - Uri: classification_handler.py
+      Unarchive: NONE
+    - Uri: get-pip.py
+      Unarchive: NONE
+    - Uri: requirements.txt
+      Unarchive: NONE

@@ -1,0 +1,183 @@
+/**
+ * ThingNameInput Styles
+ */
+
+.thing-name-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 280px;
+}
+
+.thing-name-input__label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 0;
+}
+
+.thing-name-input__wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.thing-name-input__field {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  font-family: var(--font-family-primary);
+  transition: all var(--transition-fast);
+  min-height: 36px;
+}
+
+.thing-name-input__field:hover:not(:disabled) {
+  border-color: var(--color-primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-xs);
+}
+
+.thing-name-input__field:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.thing-name-input__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--color-background);
+  border-color: var(--color-border-light);
+}
+
+.thing-name-input__field::placeholder {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.thing-name-input__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.thing-name-input__clear {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thing-name-input__clear:hover:not(:disabled) {
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
+  border-color: var(--color-error);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.thing-name-input__clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.thing-name-input__set {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  min-height: 36px;
+}
+
+.thing-name-input__set:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.thing-name-input__set:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--color-border);
+  color: var(--color-text-tertiary);
+}
+
+.thing-name-input__status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding-top: var(--spacing-xs);
+}
+
+.thing-name-input__status-text strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (max-width: 768px) {
+  .thing-name-input {
+    min-width: 250px;
+  }
+
+  .thing-name-input__wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .thing-name-input__actions {
+    justify-content: space-between;
+  }
+
+  .thing-name-input__field {
+    min-height: 44px;
+  }
+
+  .thing-name-input__set {
+    min-height: 44px;
+  }
+
+  .thing-name-input__clear {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .thing-name-input {
+    min-width: 100%;
+  }
+
+  .thing-name-input__field {
+    font-size: 1rem;
+  }
+
+  .thing-name-input__set {
+    width: 100%;
+  }
+
+  .thing-name-input__actions {
+    width: 100%;
+  }
+}

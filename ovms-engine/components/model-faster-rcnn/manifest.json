@@ -1,0 +1,14 @@
+{
+    "model_id": "faster-rcnn",
+    "model_name": "faster_rcnn",
+    "version": "1.0.0",
+    "input_name": "input_tensor",
+    "output_names": [
+        "detection_boxes",
+        "detection_classes",
+        "detection_scores",
+        "num_detections"
+    ],
+    "input_shape": [1, 255, 255, 3],
+    "labels_file": "labels.txt"
+}

@@ -1,0 +1,34 @@
+#!/bin/bash -eu
+# ovms-engine snap install hook
+# Uses modelctl (Canonical Inference Snaps CLI) for hardware detection
+# and automatic engine selection.
+
+# Set default configuration
+modelctl set --package grpc.port="9000"
+modelctl set --package http.port="9001"
+modelctl set --package config.poll_seconds="5"
+
+# Auto-select the best engine for the host hardware
+# modelctl evaluates engine manifests against detected hardware and
+# installs the highest-scoring compatible engine's components
+if snapctl is-connected hardware-observe; then
+    modelctl use-engine --auto --assume-yes
+elif lscpu -V &> /dev/null; then
+    echo "hardware-observe not connected but lscpu available: assuming dev mode."
+    modelctl use-engine --auto --assume-yes
+else
+    echo "hardware-observe interface not connected. Skipping auto engine selection."
+fi
+
+# Create writable directories for Greengrass content interface
+mkdir -p "$SNAP_COMMON/config"
+mkdir -p "$SNAP_COMMON/models"
+
+# Initialize default OVMS configuration if not present
+if [ ! -f "$SNAP_COMMON/config/models_config.json" ]; then
+    cat > "$SNAP_COMMON/config/models_config.json" << 'EOF'
+{
+    "model_config_list": []
+}
+EOF
+fi

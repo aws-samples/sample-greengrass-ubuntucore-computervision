@@ -6,6 +6,7 @@
     "@aws-sdk/client-cognito-identity": "^3.984.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.984.0",
     "@aws-sdk/client-iot": "^3.984.0",
+    "@aws-sdk/client-iot-data-plane": "^3.1013.0",
     "@aws-sdk/client-s3": "^3.984.0",
     "@aws-sdk/credential-providers": "^3.984.0",
     "@aws-sdk/s3-request-presigner": "^3.984.0",

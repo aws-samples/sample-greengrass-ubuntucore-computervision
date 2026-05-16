@@ -1,0 +1,76 @@
+---
+RecipeFormatVersion: '2020-01-25'
+ComponentName: com.example.DetectionHandler
+ComponentVersion: '1.0.0'
+ComponentDescription: 'Object detection inference handler that reads model configuration from the device shadow and calls OVMS via gRPC'
+ComponentPublisher: AWS
+ComponentDependencies:
+  aws.greengrass.ShadowManager:
+    VersionRequirement: '^2.0.0'
+  aws.greengrass.TokenExchangeService:
+    VersionRequirement: '^2.0.0'
+  com.example.ModelManagerCore:
+    VersionRequirement: '^1.0.0'
+    DependencyType: SOFT
+ComponentConfiguration:
+  DefaultConfiguration:
+    # Which model_id from the shadow reported state to use for detection
+    detection_model_id: "faster-rcnn"
+
+    # OVMS gRPC endpoint
+    OvmsGrpcUrl: "localhost:9000"
+
+    # Minimum confidence score for a detection to be included
+    ConfidenceThreshold: "0.5"
+
+    accessControl:
+      aws.greengrass.ShadowManager:
+        com.example.DetectionHandler:shadow:1:
+          policyDescription: 'Allows reading the model-config named shadow to get model metadata'
+          operations:
+            - 'aws.greengrass#GetThingShadow'
+          resources:
+            - '$aws/things/*/shadow/name/model-config'
+      aws.greengrass.ipc.pubsub:
+        com.example.DetectionHandler:pubsub:1:
+          policyDescription: 'Allows subscription to camera image capture events'
+          operations:
+            - 'aws.greengrass#SubscribeToTopic'
+          resources:
+            - 'camera/images'
+      aws.greengrass.ipc.mqttproxy:
+        com.example.DetectionHandler:mqttproxy:1:
+          policyDescription: 'Allows publication of detection results to IoT Core'
+          operations:
+            - 'aws.greengrass#PublishToIoTCore'
+          resources:
+            - 'camera/detections'
+Manifests:
+- Platform:
+    os: all
+    runtime: '*'
+  Lifecycle:
+    Install:
+      Script: |
+        /bin/bash -c 'set -e && \
+        python3 -m venv --without-pip venv/ && \
+        source venv/bin/activate && \
+        python3 {artifacts:path}/get-pip.py && \
+        python3 -m pip install -r {artifacts:path}/requirements.txt && \
+        deactivate'
+    Run:
+      Script: |
+        /bin/bash -c 'set -e && \
+        source venv/bin/activate && \
+        export AWS_IOT_THING_NAME="{iot:thingName}" && \
+        export DETECTION_MODEL_ID="{configuration:/detection_model_id}" && \
+        export OVMS_GRPC_URL="{configuration:/OvmsGrpcUrl}" && \
+        export CONFIDENCE_THRESHOLD="{configuration:/ConfidenceThreshold}" && \
+        python3 {artifacts:path}/detection_handler.py'
+  Artifacts:
+    - Uri: detection_handler.py
+      Unarchive: NONE
+    - Uri: get-pip.py
+      Unarchive: NONE
+    - Uri: requirements.txt
+      Unarchive: NONE

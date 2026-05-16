@@ -1,0 +1,15 @@
+#!/bin/bash -eu
+# Intel GPU engine server script
+# Starts OVMS with GPU device plugin and config file polling for dynamic
+# model management via Greengrass.
+
+grpc_port="$(modelctl get grpc.port)"
+http_port="$(modelctl get http.port)"
+poll_seconds="$(modelctl get config.poll_seconds)"
+
+exec "$SNAP_COMPONENTS/ovms-gpu/usr/bin/ovms" \
+    --config_path "$SNAP_COMMON/config/models_config.json" \
+    --port "$grpc_port" \
+    --rest_port "$http_port" \
+    --file_system_poll_wait_seconds "$poll_seconds" \
+    --target_device GPU

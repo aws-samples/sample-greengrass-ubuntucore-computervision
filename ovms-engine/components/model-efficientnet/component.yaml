@@ -1,0 +1,2 @@
+environment:
+  - MODEL_EFFICIENTNET_PATH=$COMPONENT

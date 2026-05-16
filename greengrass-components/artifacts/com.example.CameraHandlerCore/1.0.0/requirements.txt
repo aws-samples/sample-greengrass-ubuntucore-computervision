@@ -1,1 +1,2 @@
 opencv-python-headless
+awsiotsdk==1.21.0

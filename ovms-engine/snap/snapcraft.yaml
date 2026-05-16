@@ -1,0 +1,173 @@
+name: ovms-engine
+version: '1.0.0'
+title: OpenVINO Model Server Engine
+summary: OpenVINO Model Server inference snap for Intel hardware
+description: |
+  Inference snap packaging OpenVINO Model Server (OVMS) with silicon-optimised
+  engine variants for Intel CPU, GPU, and NPU. Built on the Canonical Inference
+  Snaps framework with automatic hardware detection and engine selection via
+  modelctl.
+
+  Exposes gRPC endpoint (TensorFlow Serving Predict API) and REST endpoint
+  for computer vision model serving. Supports dynamic model loading via
+  config file polling.
+
+  Part of the AWS IoT Greengrass + Ubuntu Core + Intel OpenVINO partnership
+  demo for edge computer vision.
+contact: https://github.com/aws-samples/sample-greengrass-ubuntucore-computervision/issues
+source-code: https://github.com/aws-samples/sample-greengrass-ubuntucore-computervision
+issues: https://github.com/aws-samples/sample-greengrass-ubuntucore-computervision/issues
+license: MIT-0
+
+base: core24
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+
+environment:
+  # Standard inference snap environment variables
+  SNAP_COMPONENTS: /snap/$SNAP_INSTANCE_NAME/components/$SNAP_REVISION
+  ARCH_TRIPLET: $CRAFT_ARCH_TRIPLET_BUILD_FOR
+
+parts:
+  # Canonical Inference Snaps CLI (modelctl)
+  # Provides: hardware detection, engine selection, config management,
+  # server lifecycle, and component installation
+  cli:
+    source: https://github.com/canonical/inference-snaps-cli.git
+    source-tag: v1.0.0-beta.24
+    plugin: go
+    build-snaps:
+      - go/1.24/stable
+    stage-packages:
+      - pciutils
+      - clinfo
+    organize:
+      bin/cli: bin/modelctl
+
+  # OpenVINO Model Server binary
+  # Built from source with CPU, GPU, and NPU plugin support
+  ovms:
+    source: https://github.com/openvinotoolkit/model_server.git
+    source-tag: v2024.5
+    source-depth: 1
+    plugin: nil
+    override-build: |
+      # OVMS provides pre-built binaries via release artifacts
+      # For snap packaging, use the pre-built binary appropriate for the target
+      echo "OVMS build placeholder - replace with actual build or binary fetch"
+    stage-packages:
+      - libgomp1
+
+  # Engine definitions
+  engines:
+    source: engines
+    plugin: dump
+    organize:
+      "*": engines/
+
+  # Server wrapper scripts
+  scripts:
+    source: scripts
+    plugin: dump
+    stage-packages:
+      - jq
+    organize:
+      "server.sh": bin/
+
+  # Component local files (model manifests and component.yaml)
+  component-local-files:
+    source: components
+    plugin: dump
+    organize:
+      "ovms-cpu": (component/ovms-cpu)
+      "ovms-gpu": (component/ovms-gpu)
+      "ovms-npu": (component/ovms-npu)
+      "model-faster-rcnn": (component/model-faster-rcnn)
+      "model-efficientnet": (component/model-efficientnet)
+
+apps:
+  # CLI exposed as the snap name (ovms-engine)
+  ovms-engine:
+    command: bin/modelctl
+    plugs:
+      - hardware-observe
+      - opengl
+      - network
+
+  # OVMS server daemon
+  server:
+    command: bin/server.sh
+    daemon: simple
+    restart-condition: on-failure
+    restart-delay: 5s
+    plugs:
+      - network
+      - network-bind
+      - hardware-observe
+      - opengl
+
+# Content interface slots for Greengrass snap integration
+# Allows the Greengrass snap to write OVMS config and custom models
+slots:
+  inference-config:
+    interface: content
+    content: inference-config
+    write:
+      - $SNAP_COMMON/config
+  inference-models:
+    interface: content
+    content: inference-models
+    write:
+      - $SNAP_COMMON/models
+
+# Snap components: runtime variants and model weights
+components:
+  # Runtime components (one per hardware target)
+  ovms-cpu:
+    type: standard
+    summary: OVMS runtime optimised for Intel CPU
+    description: |
+      OpenVINO Model Server binary and libraries optimised for Intel CPU
+      inference. Serves as the fallback engine on all Intel platforms.
+
+  ovms-gpu:
+    type: standard
+    summary: OVMS runtime optimised for Intel GPU
+    description: |
+      OpenVINO Model Server binary and libraries optimised for Intel
+      integrated and discrete GPU inference via OpenCL.
+
+  ovms-npu:
+    type: standard
+    summary: OVMS runtime optimised for Intel NPU
+    description: |
+      OpenVINO Model Server binary and libraries optimised for Intel
+      Neural Processing Unit (NPU) inference.
+
+  # Model components (OpenVINO IR format)
+  model-faster-rcnn:
+    type: standard
+    summary: Faster R-CNN object detection model (OpenVINO IR)
+    description: |
+      Faster R-CNN ResNet50 object detection model trained on COCO dataset.
+      Includes OpenVINO IR format weights (.xml/.bin) and manifest.json
+      with model metadata for auto-configuration.
+
+  model-efficientnet:
+    type: standard
+    summary: EfficientNet B0 classification model (OpenVINO IR)
+    description: |
+      EfficientNet B0 image classification model in OpenVINO IR format.
+      Includes manifest.json with model metadata for auto-configuration.
+
+hooks:
+  install:
+    plugs:
+      - hardware-observe
+      - opengl
+  configure:
+    plugs:
+      - network

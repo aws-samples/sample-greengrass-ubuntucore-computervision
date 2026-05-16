@@ -2,12 +2,14 @@
  * Main Dashboard Component - Layout container for authenticated users
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Header } from './Header';
 import { ImageGallery } from './ImageGallery';
 import { MessageFeed } from './MessageFeed';
 import { S3BucketInput } from './S3BucketInput';
 import { MqttTopicInput } from './MqttTopicInput';
+import { ThingNameInput } from './ThingNameInput';
+import { ConfidenceThresholdControl } from './ConfidenceThresholdControl';
 import { S3Provider, useS3 } from '../../contexts/S3Context';
 import { MqttProvider, useMqtt } from '../../contexts/MqttContext';
 
@@ -27,6 +29,7 @@ const DashboardContent: React.FC<DashboardProps> = ({
   const { state, actions: s3Actions } = useS3();
   const { state: mqttState } = useMqtt();
   const previousMessageCountRef = useRef<number>(0);
+  const [thingName, setThingName] = useState<string>('');
 
   /**
    * Handle S3 image gallery errors
@@ -127,6 +130,14 @@ const DashboardContent: React.FC<DashboardProps> = ({
                     className="dashboard__configuration-input"
                     onTopicChange={handleMqttTopicChange}
                   />
+                  <ThingNameInput
+                    className="dashboard__configuration-input"
+                    thingName={thingName}
+                    onThingNameChange={setThingName}
+                  />
+                </div>
+                <div className="dashboard__configuration-controls">
+                  <ConfidenceThresholdControl thingName={thingName} />
                 </div>
                 
                 <div className="dashboard__configuration-status" role="status" aria-live="polite" aria-label="Connection status indicators">

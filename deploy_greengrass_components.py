@@ -48,15 +48,24 @@ class GreengrassDeployer:
         if not self.artifacts_dir.exists():
             raise FileNotFoundError(f"Artifacts directory not found: {self.artifacts_dir}")
 
-    def upload_artifacts_to_s3(self, component_name, version):
-        """Upload component artifacts to S3."""
-        artifact_path = self.artifacts_dir / component_name / version
+    def upload_artifacts_to_s3(self, component_name, local_version, s3_version=None):
+        """Upload component artifacts to S3.
+        
+        Args:
+            component_name: The component name (used for local path and S3 prefix)
+            local_version: The version used in the local artifacts directory structure
+            s3_version: The version used in the S3 key path (defaults to local_version)
+        """
+        if s3_version is None:
+            s3_version = local_version
+
+        artifact_path = self.artifacts_dir / component_name / local_version
         if not artifact_path.exists():
-            print(f"No artifacts found for {component_name} v{version}")
+            print(f"No artifacts found for {component_name} v{local_version}")
             return {}
 
         uploaded_artifacts = {}
-        s3_prefix = f"greengrass-components/{component_name}/{version}/"
+        s3_prefix = f"greengrass-components/{component_name}/{s3_version}/"
 
         for artifact_file in artifact_path.iterdir():
             if artifact_file.is_file():
@@ -87,6 +96,43 @@ class GreengrassDeployer:
                         if artifact_name in uploaded_artifacts:
                             artifact['Uri'] = uploaded_artifacts[artifact_name]
         return recipe_data
+
+    def get_next_version(self, component_name, base_version):
+        """Get the next available version for a component by incrementing the patch number.
+        
+        Queries existing versions and returns a version higher than any that already exist.
+        For example, if 1.0.0 and 1.0.1 exist, returns 1.0.2.
+        """
+        try:
+            response = self.greengrass_client.list_component_versions(
+                arn=f"arn:aws:greengrass:{self.aws_region}:{self.account_id}:components:{component_name}"
+            )
+            existing_versions = [v['componentVersion'] for v in response.get('componentVersions', [])]
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                # Component doesn't exist yet, use base version
+                return base_version
+            raise
+
+        if not existing_versions or base_version not in existing_versions:
+            return base_version
+
+        # Parse base version and find the highest patch for this major.minor
+        parts = base_version.split('.')
+        major, minor = parts[0], parts[1]
+        prefix = f"{major}.{minor}."
+
+        max_patch = -1
+        for v in existing_versions:
+            if v.startswith(prefix):
+                try:
+                    patch = int(v.split('.')[2])
+                    max_patch = max(max_patch, patch)
+                except (IndexError, ValueError):
+                    continue
+
+        next_patch = max_patch + 1 if max_patch >= 0 else 0
+        return f"{major}.{minor}.{next_patch}"
 
     def delete_component_version(self, component_name, component_version):
         """Delete a specific component version."""
@@ -129,17 +175,30 @@ class GreengrassDeployer:
             print(f"Error listing deployments: {e}")
 
     def create_component(self, recipe_file, force_recreate=False):
-        """Create a Greengrass component from a recipe file."""
+        """Create a Greengrass component from a recipe file.
+        
+        On version conflict: auto-increments the patch version to avoid cache
+        issues on the device. Use --force to delete and recreate the same version instead.
+        """
         with open(recipe_file, 'r', encoding='utf-8') as f:
             recipe_data = yaml.safe_load(f)
 
         component_name = recipe_data['ComponentName']
-        component_version = recipe_data['ComponentVersion']
+        base_version = recipe_data['ComponentVersion']
         
+        # Determine the version to use
+        if force_recreate:
+            component_version = base_version
+        else:
+            component_version = self.get_next_version(component_name, base_version)
+            if component_version != base_version:
+                print(f"Version {base_version} already exists, auto-incrementing to {component_version}")
+                recipe_data['ComponentVersion'] = component_version
+
         print(f"Processing component: {component_name} v{component_version}")
 
-        # Upload artifacts to S3
-        uploaded_artifacts = self.upload_artifacts_to_s3(component_name, component_version)
+        # Upload artifacts to S3 (use base version for local path, new version for S3 key)
+        uploaded_artifacts = self.upload_artifacts_to_s3(component_name, base_version, component_version)
         
         # Update recipe with S3 URIs
         recipe_data = self.update_recipe_with_s3_uris(recipe_data, uploaded_artifacts)
@@ -177,7 +236,8 @@ class GreengrassDeployer:
                             'arn': response['arn']
                         }
                 else:
-                    print(f"Component {component_name} v{component_version} already exists (use --force to recreate)")
+                    # This shouldn't happen since we auto-incremented, but handle gracefully
+                    print(f"Component {component_name} v{component_version} conflict (unexpected)")
                     return {
                         'componentName': component_name,
                         'componentVersion': component_version,
@@ -277,7 +337,7 @@ class GreengrassDeployer:
         return deployment_id
 
     def get_components_from_recipes(self):
-        """Get component information from recipe files without creating them."""
+        """Get component information from recipe files, using the latest available version."""
         components = []
         
         for recipe_file in self.recipes_dir.glob('*.yaml'):
@@ -285,7 +345,10 @@ class GreengrassDeployer:
                 recipe_data = yaml.safe_load(f)
             
             component_name = recipe_data['ComponentName']
-            component_version = recipe_data['ComponentVersion']
+            base_version = recipe_data['ComponentVersion']
+            
+            # Find the latest version that exists in the cloud
+            component_version = self._get_latest_version(component_name, base_version)
             
             components.append({
                 'componentName': component_name,
@@ -294,6 +357,32 @@ class GreengrassDeployer:
             })
         
         return components
+
+    def _get_latest_version(self, component_name, base_version):
+        """Get the latest existing version for a component, falling back to base_version."""
+        try:
+            response = self.greengrass_client.list_component_versions(
+                arn=f"arn:aws:greengrass:{self.aws_region}:{self.account_id}:components:{component_name}"
+            )
+            existing_versions = [v['componentVersion'] for v in response.get('componentVersions', [])]
+        except ClientError:
+            return base_version
+
+        if not existing_versions:
+            return base_version
+
+        # Find the highest version with the same major.minor
+        parts = base_version.split('.')
+        major, minor = parts[0], parts[1]
+        prefix = f"{major}.{minor}."
+
+        matching = [v for v in existing_versions if v.startswith(prefix)]
+        if not matching:
+            return base_version
+
+        # Sort by patch number descending
+        matching.sort(key=lambda v: int(v.split('.')[2]), reverse=True)
+        return matching[0]
 
     def deploy_full(self, thing_name, force_recreate=False):
         """Full deployment: create components and deploy to thing."""

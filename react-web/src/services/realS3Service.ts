@@ -5,7 +5,6 @@
 import {
   S3Client,
   ListBucketsCommand,
-  ListObjectsV2Command,
   GetObjectCommand,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
@@ -194,6 +193,7 @@ export class RealS3Service {
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: key,
+        ResponseCacheControl: 'no-cache, no-store, must-revalidate',
       });
 
       const signedUrl = await getSignedUrl(this.s3Client, command, {
@@ -263,8 +263,9 @@ export class RealS3Service {
 
       const key = 'camera/latest-inference.jpg';
       
-      // Check if the image exists using GetObjectCommand
-      const command = new GetObjectCommand({
+      // Use HeadObjectCommand for metadata - avoids downloading the body stream
+      // and prevents stale metadata from connection reuse issues
+      const command = new HeadObjectCommand({
         Bucket: bucketName,
         Key: key,
       });
@@ -280,7 +281,7 @@ export class RealS3Service {
         };
       }
 
-      // Generate signed URL for the image
+      // Generate signed URL for the image (with cache-busting to ensure fresh content)
       const signedUrl = await this.generateSignedUrl(bucketName, key);
 
       const imageObject: S3Object = {
@@ -291,7 +292,11 @@ export class RealS3Service {
         etag: response.ETag,
       };
 
-      console.log(' Found latest image:', key, '(', response.LastModified.toISOString(), ')');
+      console.log(' Found latest image:', key, {
+        lastModified: response.LastModified.toISOString(),
+        size: response.ContentLength,
+        etag: response.ETag,
+      });
 
       return {
         objects: [imageObject],
@@ -299,7 +304,7 @@ export class RealS3Service {
         totalCount: 1,
       };
     } catch (error: any) {
-      if (error?.name === 'NoSuchKey') {
+      if (error?.name === 'NoSuchKey' || error?.name === 'NotFound') {
         console.log('Latest image not yet available');
         return {
           objects: [],
