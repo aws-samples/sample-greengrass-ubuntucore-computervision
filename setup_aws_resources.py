@@ -258,7 +258,7 @@ class AWSResourcesSetup:
                 raise
 
     def create_iot_policy(self):
-        """Create or update IoT policy for dashboard access."""
+        """Create IoT policy for dashboard access."""
         policy_name = f'{self.project_name}-dashboard-policy'
         policy_document = {
             "Version": "2012-10-17",
@@ -275,51 +275,23 @@ class AWSResourcesSetup:
                         f"arn:aws:iot:{self.aws_region}:{self.account_id}:topicfilter/camera/*",
                         f"arn:aws:iot:{self.aws_region}:{self.account_id}:topic/camera/*"
                     ]
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "iot:GetThingShadow",
-                        "iot:UpdateThingShadow"
-                    ],
-                    "Resource": [
-                        f"arn:aws:iot:{self.aws_region}:{self.account_id}:thing/*"
-                    ]
                 }
             ]
         }
-
+        
         try:
             self.iot.create_policy(
                 policyName=policy_name,
                 policyDocument=json.dumps(policy_document)
             )
             print(f"Created IoT Policy: {policy_name}")
+            return policy_name
         except ClientError as e:
             if e.response['Error']['Code'] == 'ResourceAlreadyExistsException':
-                # Policy exists — create a new version with the updated document
-                try:
-                    # IoT policies support at most 5 versions; delete oldest non-default if needed
-                    versions = self.iot.list_policy_versions(policyName=policy_name)['policyVersions']
-                    non_default = [v for v in versions if not v['isDefaultVersion']]
-                    if len(versions) >= 5 and non_default:
-                        oldest = sorted(non_default, key=lambda v: v['createDate'])[0]
-                        self.iot.delete_policy_version(
-                            policyName=policy_name,
-                            policyVersionId=oldest['versionId']
-                        )
-                    self.iot.create_policy_version(
-                        policyName=policy_name,
-                        policyDocument=json.dumps(policy_document),
-                        setAsDefault=True
-                    )
-                    print(f"Updated IoT Policy: {policy_name}")
-                except ClientError as update_err:
-                    print(f"Warning: Failed to update IoT Policy: {update_err}")
-            else:
-                print(f"Error creating IoT Policy: {e}")
-                raise
-        return policy_name
+                print(f"IoT Policy already exists: {policy_name}")
+                return policy_name
+            print(f"Error creating IoT Policy: {e}")
+            raise
 
     def create_iam_roles(self, identity_pool_id, iot_policy_name):
         """Create IAM roles for authenticated and unauthenticated users."""
@@ -364,9 +336,7 @@ class AWSResourcesSetup:
                         "iot:Subscribe",
                         "iot:Receive",
                         "iot:AttachPolicy",
-                        "iot:DescribeEndpoint",
-                        "iot:GetThingShadow",
-                        "iot:UpdateThingShadow"
+                        "iot:DescribeEndpoint"
                     ],
                     "Resource": "*"
                 }
